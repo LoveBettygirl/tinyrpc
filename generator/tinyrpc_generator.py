@@ -295,7 +295,7 @@ def gen_pb_files():
     print('Begin generate protobuf file')
     pb_path = src_path + '/pb/'
     cmd = 'cp -r ' + proto_file + ' ' + pb_path
-    cmd += ' && cd ' + pb_path + ' && protoc --cpp_out=./ ' + proto_file 
+    cmd += ' && cd ' + pb_path + ' && protoc --cpp_out=./ ' + os.path.basename(proto_file)
     print('excute cmd: ' + cmd)
 
     if os.system(cmd) is not 0:
@@ -526,11 +526,11 @@ def parseInput():
     if not os.path.exists(proto_file):
         raise Exception("Generate error, not exist protobuf file: " + proto_file)
 
-    if ".proto" not in proto_file:
+    if ".proto" != proto_file[-6:].lower():
         raise Exception("Generate error, input file is't standard protobuf file:[" + proto_file + "]")
 
     global project_name
-    project_name = proto_file[0: -6]
+    project_name = os.path.basename(proto_file)[0: -6]
     print("project name is " + project_name)
 
 
