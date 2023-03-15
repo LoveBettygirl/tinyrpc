@@ -363,8 +363,11 @@ def gen_run_script():
     script = open(generator_path + '/template/conf.xml.template','r')
     dir_src = generator_path + '/template/'
     cmd = 'cp -r ' + dir_src + '*.sh ' + bin_path + "/" 
-    print('excute cmd: ' + cmd)
+    exec_chmod = 'chmod +x ' + bin_path + "/*.sh" 
+    print('execute cmd: ' + cmd)
     os.system(cmd)
+    print('execute cmd: ' + exec_chmod)
+    os.system(exec_chmod)
 
     print('End generate run script')
     print('=' * 100)
