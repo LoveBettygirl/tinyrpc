@@ -13,10 +13,13 @@ out_project_path = './'
 project_name = ''
 proto_file = ''
 src_path = ''
+src_pb_path = ''
+proj_path = ''
 conf_path = ''
 bin_path = ''
 test_client_path = ''
 test_client_tool_path = ''
+interface_list = []
 
 IP = '0.0.0.0'
 PORT = 39999
@@ -140,6 +143,7 @@ def generate_framework_code():
     method_i = cc_file_content.find('${METHOD}')
     pre_content = cc_file_content[0: method_i]
     next_content = cc_file_content[method_i + 9: ]
+    global interface_list
     interface_list = []
 
     for each in method_list:
@@ -304,29 +308,80 @@ def gen_pb_files():
     print('End generate protobuf file')
     print('=' * 100)
 
-def gen_makefile():
+def gen_cmake_file():
     print('=' * 100)
-    print('Begin to generate makefile')
-    out_file = src_path + '/makefile'
+    print('Begin to generate CMakeLists.txt')
+
+
+    print('=' * 100)
+    print('Begin to generate root CMakeLists.txt')
+    # gen root cmake
+    out_file = proj_path + '/CMakeLists.txt'
     if os.path.exists(out_file):
-        print('makefile exist, skip generate')
-        print('End generate makefile')
+        print('root CMakeLists.txt exist, skip generate')
+        print('End generate root CMakeLists.txt')
         print('=' * 100)
-        return 
+    else:
+        template_file = open(generator_path + '/template/CMakeLists_root.txt.template','r')
+        tmpl = Template(template_file.read())
+        content = tmpl.safe_substitute(
+            PROJECT_REAL_NAME = project_name,
+            CREATE_TIME = datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        file = open(out_file, 'w')
+        file.write(content)
+        file.close()
+        print('succ write to ' + out_file)
+        print('End generate root CMakeLists.txt')
+        print('=' * 100)
+
+    # gen server cmake
+    out_file = src_path + '/CMakeLists.txt'
+    if os.path.exists(out_file):
+        print('server CMakeLists.txt exist, skip generate')
+        print('End generate server CMakeLists.txt')
+        print('=' * 100)
+    else:
+        template_file = open(generator_path + '/template/CMakeLists_server.txt.template','r')
+        tmpl = Template(template_file.read())
+        content = tmpl.safe_substitute(
+            CREATE_TIME = datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        file = open(out_file, 'w')
+        file.write(content)
+        file.close()
+        print('succ write to ' + out_file)
+        print('End generate server CMakeLists.txt')
+        print('=' * 100)
     
-    template_file = open(generator_path + '/template/makefile.template','r')
+    # gen client cmake
+    out_file = test_client_path + '/CMakeLists.txt'
+    template_file = open(generator_path + '/template/CMakeLists_client.txt.template','r')
     # print(template_file.read())
     tmpl = Template(template_file.read())
 
     content = tmpl.safe_substitute(
-        PROJECT_NAME = project_name,
         CREATE_TIME = datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+
+    i1 = content.find('${METHOD}') 
+    pre_content = content[0: i1]
+    next_content = content[i1 + 9: ]
+    for each in interface_list:
+        client_name = 'test_' + each['interface_name'] + '_client'
+        pre_content += 'set(' + to_underline(client_name).upper() + ' ./' + client_name + '.cc' + ' ../' + project_name + '/pb/' + project_name + '.pb.cc)\n'
+        pre_content += 'add_executable(' + client_name + ' ${' + to_underline(client_name).upper() + '})\n'
+        pre_content += 'target_link_libraries(' + client_name + ' tinyrpc pthread timyxml protobuf dl)\n\n'
+        'test_' + each['interface_name'] + '_client'
+    pre_content = pre_content[:-2]
+    content = pre_content + next_content
 
     file = open(out_file, 'w')
     file.write(content)
     file.close()
     print('succ write to ' + out_file)
-    print('End generate makefile')
+    print('End generate client CMakeLists.txt')
+    print('=' * 100)
+
+    print('End generate CMakeLists.txt')
     print('=' * 100)
 
 def gen_conf_file():
@@ -368,6 +423,8 @@ def gen_run_script():
     os.system(cmd)
     print('execute cmd: ' + exec_chmod)
     os.system(exec_chmod)
+    os.system('mv ' + bin_path + "/build.sh " + bin_path + "/../build.sh")
+    os.system('mv ' + bin_path + "/clean.sh " + bin_path + "/../clean.sh")
 
     print('End generate run script')
     print('=' * 100)
@@ -378,6 +435,7 @@ def generate_dir():
     print('=' * 100)
     print('Begin to generate project dir')
 
+    global proj_path
     if out_project_path == "":
         proj_path = './' + project_name.strip()
     if out_project_path[-1] == '/':
@@ -405,7 +463,10 @@ def generate_dir():
     src_path = proj_path + '/' + project_name
     src_interface_path = src_path + '/interface'
     src_service_path = src_path + '/service'
+
+    global src_pb_path
     src_pb_path = src_path + '/pb'
+
     src_comm_path = src_path + '/comm'
 
     dir_list = []
@@ -444,13 +505,13 @@ def generate_tinyrpc_project():
 
         gen_pb_files()
 
-        gen_makefile()
-
         gen_run_script()
 
         gen_conf_file()
 
         generate_framework_code()
+
+        gen_cmake_file()
 
         print('Succ generate tinyrpc project')
         print('=' * 150)
